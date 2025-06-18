@@ -66,6 +66,7 @@ public class PizzaDough : MonoBehaviour
         isCooked = true; // mark this pizza as fully cooked
         
         Debug.Log("Pizza is ready to serve!"); // log completion message on the terminal
+        
     }
     
     // public function that returns whether this pizza has been cooked

@@ -147,18 +147,16 @@ public class PizzaSimulator : MonoBehaviour
     
     // creates sauce blobs when mouse is dragged over pizza
     void SpreadSauce(Vector3 worldPosition)
+{
+    if (pizzaDoughObject == null || tomatoSauceSprite == null) return;
+    
+    // check distance from pizza center instead of bounds
+    float distanceFromCenter = Vector3.Distance(worldPosition, pizzaDoughObject.transform.position);
+    if (distanceFromCenter <= 7f) 
     {
-        // make sure we have a pizza and sauce image
-        if (pizzaDoughObject == null || tomatoSauceSprite == null) return;
-        
-        // check if the mouse position is over the pizza
-        Collider2D pizzaCollider = pizzaDoughObject.GetComponent<Collider2D>();
-        if (pizzaCollider != null && pizzaCollider.bounds.Contains(worldPosition))
-        {
-            // create a sauce blob at this position
-            CreateIngredientImage(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
-        }
+        CreateIngredientImage(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
     }
+}
     
     // selects an ingredient type for placement
     void SelectIngredient(IngredientType ingredientType)

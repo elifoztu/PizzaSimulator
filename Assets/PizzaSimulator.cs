@@ -5,29 +5,29 @@ using System.Collections.Generic;
 public class PizzaSimulator : MonoBehaviour
 {
     [Header("Pizza Components")]
-    public GameObject pizzaDoughObject; // the actual pizza object in the scene
-    public Transform ovenTransform; // where the pizza sits (empty gameobject for positioning)
+    [SerializeField] private GameObject pizzaDoughObject; // the actual pizza object in the scene
+    [SerializeField] private Transform ovenTransform; // where the pizza sits (empty gameobject for positioning)
     
     [Header("Ingredient Sprites (Drag PNG files here)")]
-    public Sprite doughSprite; // image for the pizza base
-    public Sprite tomatoSauceSprite; // red sauce blob image
-    public Sprite pepperoniSprite; // pepperoni slice image
-    public Sprite cornSprite; // corn kernel image
-    public Sprite olivesSprite; // olive slice image
+    [SerializeField] private Sprite doughSprite; // image for the pizza base
+    [SerializeField] private Sprite tomatoSauceSprite; // red sauce blob image
+    [SerializeField] private Sprite pepperoniSprite; // pepperoni slice image
+    [SerializeField] private Sprite cornSprite; // corn kernel image
+    [SerializeField] private Sprite olivesSprite; // olive slice image
     
     [Header("UI Buttons")]
-    public Button sauceButton; // button to activate sauce spreading mode
-    public Button pepperoniButton; // button to select pepperoni placement
-    public Button cornButton; // button to select corn placement
-    public Button olivesButton; // button to select olive placement
-    public Button newPizzaButton; // button to clear pizza and start over
-    public Button cookPizzaButton; // button to cook the pizza (turns golden: code in pizza dough)
+    [SerializeField] private Button sauceButton; // button to activate sauce spreading mode
+    [SerializeField] private Button pepperoniButton; // button to select pepperoni placement
+    [SerializeField] private Button cornButton; // button to select corn placement
+    [SerializeField] private Button olivesButton; // button to select olive placement
+    [SerializeField] private Button newPizzaButton; // button to clear pizza and start over
+    [SerializeField] private Button cookPizzaButton; // button to cook the pizza (turns golden)
     
     [Header("Settings")]
-    public float sauceBlobSize = 0.1f; // how big each sauce splat appears
-    public float pepperoniSize = 0.2f; // how big pepperoni slices appear
-    public float cornSize = 0.05f; // how big corn kernels appear
-    public float olivesSize = 0.15f; // how big olive slices appear
+    [SerializeField] private float sauceBlobSize = 0.1f; // how big each sauce splat appears
+    [SerializeField] private float pepperoniSize = 0.2f; // how big pepperoni slices appear
+    [SerializeField] private float cornSize = 0.05f; // how big corn kernels appear
+    [SerializeField] private float olivesSize = 0.15f; // how big olive slices appear
     
     // private variables that the script uses internally
     private bool sauceModeActive = false; // tracks if we're in sauce spreading mode
@@ -58,17 +58,38 @@ public class PizzaSimulator : MonoBehaviour
     void SetupUI()
     {
         // when sauce button is clicked, runs ToggleSauceMode function
-        sauceButton.onClick.AddListener(() => ToggleSauceMode());
+        sauceButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            ToggleSauceMode();
+        });
         
         // when ingredient buttons are clicked, select that ingredient type
-        // button click settings
-        pepperoniButton.onClick.AddListener(() => SelectIngredient(IngredientType.Pepperoni));
-        cornButton.onClick.AddListener(() => SelectIngredient(IngredientType.Corn));
-        olivesButton.onClick.AddListener(() => SelectIngredient(IngredientType.Olives));
+        pepperoniButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            SelectIngredient(IngredientType.Pepperoni);
+        });
+        
+        cornButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            SelectIngredient(IngredientType.Corn);
+        });
+        
+        olivesButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            SelectIngredient(IngredientType.Olives);
+        });
         
         // utility buttons
-        newPizzaButton.onClick.AddListener(CreateNewPizza); // clear pizza
-        cookPizzaButton.onClick.AddListener(CookPizza); // cook the pizza
+        newPizzaButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            AudioManager.Instance?.PlayNewPizzaSound();
+            CreateNewPizza();
+        });
+        
+        cookPizzaButton.onClick.AddListener(() => {
+            AudioManager.Instance?.PlayButtonClickSound();
+            CookPizza();
+        });
     }
     
     // runs every frame while the game is playing
@@ -108,6 +129,9 @@ public class PizzaSimulator : MonoBehaviour
     // clears the pizza and starts fresh
     void CreateNewPizza()
     {
+        // stop any ongoing effects
+        ParticleEffectsManager.Instance?.StopAllEffects();
+        
         // destroy all ingredients currently on the pizza
         foreach (GameObject ingredient in currentIngredients)
         {
@@ -147,16 +171,22 @@ public class PizzaSimulator : MonoBehaviour
     
     // creates sauce blobs when mouse is dragged over pizza
     void SpreadSauce(Vector3 worldPosition)
-{
-    if (pizzaDoughObject == null || tomatoSauceSprite == null) return;
-    
-    // check distance from pizza center instead of bounds
-    float distanceFromCenter = Vector3.Distance(worldPosition, pizzaDoughObject.transform.position);
-    if (distanceFromCenter <= 7f) 
     {
-        CreateIngredientImage(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
+        // make sure we have a pizza and sauce image
+        if (pizzaDoughObject == null || tomatoSauceSprite == null) return;
+        
+        // check if the mouse position is over the pizza
+        Collider2D pizzaCollider = pizzaDoughObject.GetComponent<Collider2D>();
+        if (pizzaCollider != null && pizzaCollider.bounds.Contains(worldPosition))
+        {
+            // create a sauce blob at this position
+            CreateIngredientImage(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
+            
+            // play audio and visual effects
+            AudioManager.Instance?.PlayIngredientSound(IngredientType.TomatoSauce);
+            ParticleEffectsManager.Instance?.PlayIngredientEffect(worldPosition, IngredientType.TomatoSauce);
+        }
     }
-}
     
     // selects an ingredient type for placement
     void SelectIngredient(IngredientType ingredientType)
@@ -191,6 +221,11 @@ public class PizzaSimulator : MonoBehaviour
             if (ingredientSprite != null)
             {
                 CreateIngredientImage(ingredientSprite, position, ingredientSize, sortingOrder);
+                
+                // play audio and visual effects
+                AudioManager.Instance?.PlayIngredientSound(type);
+                ParticleEffectsManager.Instance?.PlayIngredientEffect(position, type);
+                
                 Debug.Log($"Placed {type} on pizza!"); // log for debugging
             }
         }
@@ -262,6 +297,10 @@ public class PizzaSimulator : MonoBehaviour
     void CookPizza()
     {
         if (pizzaDoughObject == null) return; // make sure pizza exists
+        
+        // play cooking start effects
+        AudioManager.Instance?.PlayCookingStartSound();
+        ParticleEffectsManager.Instance?.StartCookingEffect(pizzaDoughObject.transform.position);
         
         // get the PizzaDough script component and tell it to start cooking
         PizzaDough doughComponent = pizzaDoughObject.GetComponent<PizzaDough>();

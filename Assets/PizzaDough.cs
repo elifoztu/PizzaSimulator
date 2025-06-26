@@ -4,15 +4,15 @@ using System.Collections;
 public class PizzaDough : MonoBehaviour
 {
     [Header("Cooking Settings")]
-    public Color cookedColor = new Color(0.9f, 0.7f, 0.4f); // what color the dough turns when cooked (golden brown)
-    public float cookingTime = 3f; // how many seconds it takes to cook
-    public AudioClip cookingSound; // optional sound effect when cooking (will add audio file later)
+    [SerializeField] private Color cookedColor = new Color(0.9f, 0.7f, 0.4f); // what color the dough turns when cooked (golden brown)
+    [SerializeField] private float cookingTime = 3f; // how many seconds it takes to cook
+    [SerializeField] private AudioClip cookingSound; // optional sound effect when cooking (drag audio file here)
     
-    // private variables used internally by this code
+    // private variables used internally by this script
     private SpriteRenderer spriteRenderer; // component that displays the pizza image
     private Color originalColor; // stores the original dough color so we can reset it
     private bool isCooked = false; // tracks whether this pizza has been cooked already
-    private AudioSource audioSource; // component for playing sounds that will be used later
+    private AudioSource audioSource; // component for playing sounds
     
     // runs once when this object is created
     void Start()
@@ -32,11 +32,11 @@ public class PizzaDough : MonoBehaviour
         // only cook if we haven't already cooked this pizza and we have a sprite renderer
         if (!isCooked && spriteRenderer != null)
         {
-            StartCoroutine(CookingAnimation()); // starts the gradual color change animation
+            StartCoroutine(CookingAnimation()); // start the gradual color change animation
         }
     }
     
-    // animation that gradually changes the pizza color over time
+    // coroutine that gradually changes the pizza color over time
     System.Collections.IEnumerator CookingAnimation()
     {
         Debug.Log("Pizza cooking started!"); // log message for debugging
@@ -65,8 +65,10 @@ public class PizzaDough : MonoBehaviour
         spriteRenderer.color = cookedColor;
         isCooked = true; // mark this pizza as fully cooked
         
-        Debug.Log("Pizza is ready to serve!"); // log completion message on the terminal
-        
+        // play completion effects
+        AudioManager.Instance?.PlayCookingCompleteSound();
+        ParticleEffectsManager.Instance?.PlayCookingCompleteEffect(transform.position);
+        Debug.Log("Pizza is ready to serve!"); // log completion message
     }
     
     // public function that returns whether this pizza has been cooked

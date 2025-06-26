@@ -324,7 +324,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 2.715
+  m_Radius: 2.5
 --- !u!212 &244551130
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -623,6 +623,60 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &296465178
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 296465180}
+  - component: {fileID: 296465179}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &296465179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 296465178}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b5a12bfd513c4a2d88f559245642fd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  saucePlacementSound: {fileID: 0}
+  pepperoniPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  cornPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  olivesPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  cookingStartSound: {fileID: 8300000, guid: 7bc84fed2974b487db359bf71b8e33a9, type: 3}
+  cookingCompleteSound: {fileID: 8300000, guid: f3ce06659e7ef4ff192e2080f3610490, type: 3}
+  buttonClickSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  newPizzaSound: {fileID: 8300000, guid: 92f2d5819ebe2411b8c81efb26ec83a3, type: 3}
+  masterVolume: 1
+  soundEnabled: 1
+--- !u!4 &296465180
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 296465178}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.07143, y: 0, z: -1.42857}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &356157867
 GameObject:
   m_ObjectHideFlags: 0
@@ -1003,6 +1057,57 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 432455699}
   m_CullTransparentMesh: 1
+--- !u!1 &435030546
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 435030548}
+  - component: {fileID: 435030547}
+  m_Layer: 0
+  m_Name: ParticleEffectsManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &435030547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435030546}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39dfb5c032afc427ba52ae71ba1db1d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cookingSmoke: {fileID: 0}
+  steamEffect: {fileID: 0}
+  sauceSparkle: {fileID: 0}
+  ingredientPop: {fileID: 0}
+  buttonClickEffect: {fileID: 0}
+  effectsEnabled: 1
+  effectDuration: 2
+--- !u!4 &435030548
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435030546}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.07143, y: 0, z: -1.42857}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -2010,8 +2115,8 @@ SpriteMask:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7716046400830436474, guid: dcafdbcacfe984c80ac888ca4cd269d5, type: 3}
-  m_MaskAlphaCutoff: 0.2
+  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_MaskAlphaCutoff: 0.1
   m_FrontSortingLayerID: 0
   m_BackSortingLayerID: 0
   m_FrontSortingLayer: 0
@@ -2031,7 +2136,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3.5, y: 1, z: 0}
-  m_LocalScale: {x: 3, y: 3, z: 0}
+  m_LocalScale: {x: 70, y: 70, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -2388,3 +2493,5 @@ SceneRoots:
   - {fileID: 267956025}
   - {fileID: 2063090610}
   - {fileID: 1823087302}
+  - {fileID: 296465180}
+  - {fileID: 435030548}

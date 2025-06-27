@@ -2,6 +2,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
+
+// things to work on:
+// center pizza and buttons on the screen
+// fix the steam and smoke effect 
+// add a better background
+// next steps will be adding customer interaction, pizza moving on an oven, more toppings, and so on
+
 public class PizzaSimulator : MonoBehaviour
 {
     [Header("Pizza Components")]
@@ -24,15 +31,19 @@ public class PizzaSimulator : MonoBehaviour
     [SerializeField] private Button cookPizzaButton; // button to cook the pizza (turns golden)
     
     [Header("Settings")]
-    [SerializeField] private float sauceBlobSize = 0.1f; // how big each sauce splat appears
+    [SerializeField] private float sauceBlobSize = 0.3f; // how big each sauce blob appears (bigger for paint effect)
     [SerializeField] private float pepperoniSize = 0.2f; // how big pepperoni slices appear
     [SerializeField] private float cornSize = 0.05f; // how big corn kernels appear
     [SerializeField] private float olivesSize = 0.15f; // how big olive slices appear
     
-    // private variables that the script uses internally
+    [Header("Sauce Paint Settings")]
+    [SerializeField] private float saucePaintDistance = 0.2f; // minimum distance between sauce blobs for smooth painting
+    [SerializeField] private float sauceAlpha = 0.8f;
+    
     private bool sauceModeActive = false; // tracks if we're in sauce spreading mode
     private Camera mainCamera; // reference to the main camera for mouse position calculations
     private List<GameObject> currentIngredients = new List<GameObject>(); // list of all ingredients on current pizza
+    private Vector3 lastSaucePosition; // tracks last sauce position to ensure smooth painting
     
     // tracks which ingredient is currently selected (pepperoni, corn, etc.)
     private IngredientType? selectedIngredient = null;
@@ -99,7 +110,7 @@ public class PizzaSimulator : MonoBehaviour
         HandleIngredientPlacement(); // check if player is placing ingredients
     }
     
-    // handles sauce spreading when in sauce mode
+    // handles sauce spreading when in sauce mode - now with paint-style smooth spreading
     void HandleSauceInput()
     {
         // if sauce mode is on AND left mouse button is held down
@@ -108,7 +119,19 @@ public class PizzaSimulator : MonoBehaviour
             Vector3 mousePos = Input.mousePosition; // get mouse position on screen
             // convert screen position to world position (where objects actually are)
             Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, 10));
-            SpreadSauce(worldPos); // create sauce at that position
+            
+            // only place sauce if we've moved far enough from last position (creates smooth painting)
+            if (Vector3.Distance(worldPos, lastSaucePosition) >= saucePaintDistance || lastSaucePosition == Vector3.zero)
+            {
+                SpreadSauce(worldPos); // create sauce at that position
+                lastSaucePosition = worldPos; // remember this position
+            }
+        }
+        
+        // reset last position when mouse is released (for next paint stroke)
+        if (Input.GetMouseButtonUp(0))
+        {
+            lastSaucePosition = Vector3.zero;
         }
     }
     
@@ -140,6 +163,9 @@ public class PizzaSimulator : MonoBehaviour
         }
         currentIngredients.Clear(); // empty our ingredient list
         
+        // reset sauce painting position
+        lastSaucePosition = Vector3.zero;
+        
         // reset the pizza dough to its original state
         if (pizzaDoughObject != null)
         {
@@ -160,16 +186,19 @@ public class PizzaSimulator : MonoBehaviour
         sauceModeActive = !sauceModeActive; // flip between true and false
         selectedIngredient = null; // clear any selected ingredient
         
+        // reset sauce painting when switching modes
+        lastSaucePosition = Vector3.zero;
+        
         // change button color to show if sauce mode is active
         ColorBlock colors = sauceButton.colors;
         colors.normalColor = sauceModeActive ? Color.red : Color.white; // red when active
         sauceButton.colors = colors;
         
         // log current state for debugging
-        Debug.Log("Sauce mode: " + (sauceModeActive ? "ON - Click and drag on pizza!" : "OFF"));
+        Debug.Log("Sauce mode: " + (sauceModeActive ? "ON - Click and drag on pizza to paint sauce!" : "OFF"));
     }
     
-    // creates sauce blobs when mouse is dragged over pizza
+    // creates sauce blobs when mouse is dragged over pizza - now creates smooth paint-style sauce
     void SpreadSauce(Vector3 worldPosition)
     {
         // make sure we have a pizza and sauce image
@@ -179,13 +208,44 @@ public class PizzaSimulator : MonoBehaviour
         Collider2D pizzaCollider = pizzaDoughObject.GetComponent<Collider2D>();
         if (pizzaCollider != null && pizzaCollider.bounds.Contains(worldPosition))
         {
-            // create a sauce blob at this position
-            CreateIngredientImage(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
+            // create a sauce blob at this position with paint-style settings
+            CreateSaucePaintBlob(tomatoSauceSprite, worldPosition, sauceBlobSize, 1);
             
-            // play audio and visual effects
-            AudioManager.Instance?.PlayIngredientSound(IngredientType.TomatoSauce);
-            ParticleEffectsManager.Instance?.PlayIngredientEffect(worldPosition, IngredientType.TomatoSauce);
+            // play audio and visual effects (less frequently than before for smoother painting)
+            if (Random.Range(0f, 1f) < 0.3f) // only 30% chance to play effects so it's not too noisy
+            {
+                AudioManager.Instance?.PlayIngredientSound(IngredientType.TomatoSauce);
+                ParticleEffectsManager.Instance?.PlayIngredientEffect(worldPosition, IngredientType.TomatoSauce);
+            }
         }
+    }
+    
+    // creates a sauce blob optimized for paint-style spreading
+    void CreateSaucePaintBlob(Sprite sprite, Vector3 position, float size, int sortingOrder)
+    {
+        // create a new gameobject for this sauce blob
+        GameObject newSauceBlob = new GameObject("SauceBlob");
+        newSauceBlob.transform.position = position; // place it at the mouse position
+        newSauceBlob.transform.parent = pizzaDoughObject.transform; // make it a child of the pizza
+        
+        // add a sprite renderer to display the sauce image
+        SpriteRenderer renderer = newSauceBlob.AddComponent<SpriteRenderer>();
+        renderer.sprite = sprite; // set the image
+        renderer.sortingOrder = sortingOrder; // control what appears on top
+        
+        // make sauce semi-transparent so blobs blend together for smooth painting effect
+        Color sauceColor = renderer.color;
+        sauceColor.a = sauceAlpha; // set transparency
+        renderer.color = sauceColor;
+        
+        // set the size of the sauce blob (bigger than before for smoother coverage)
+        newSauceBlob.transform.localScale = Vector3.one * size;
+        
+        // slight random rotation for natural look
+        newSauceBlob.transform.rotation = Quaternion.Euler(0, 0, Random.Range(0, 360));
+        
+        // add to our list so we can clear it later
+        currentIngredients.Add(newSauceBlob);
     }
     
     // selects an ingredient type for placement
@@ -193,6 +253,9 @@ public class PizzaSimulator : MonoBehaviour
     {
         sauceModeActive = false; // turn off sauce mode
         selectedIngredient = ingredientType; // remember which ingredient was selected
+        
+        // reset sauce painting when switching to ingredients
+        lastSaucePosition = Vector3.zero;
         
         // reset sauce button color since we're not in sauce mode anymore
         ColorBlock colors = sauceButton.colors;

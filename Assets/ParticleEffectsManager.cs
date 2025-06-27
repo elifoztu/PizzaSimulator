@@ -4,6 +4,8 @@ using System.Collections;
 public class ParticleEffectsManager : MonoBehaviour
 {
     [Header("Cooking Effects")]
+    
+    // these two are not working
     [SerializeField] private ParticleSystem cookingSmoke; // smoke effect when pizza cooks
     [SerializeField] private ParticleSystem steamEffect; // steam when pizza is done
     
@@ -17,8 +19,8 @@ public class ParticleEffectsManager : MonoBehaviour
     [Header("Effect Settings")]
     [SerializeField] private bool effectsEnabled = true; // enable/disable all effects
     [SerializeField] private float effectDuration = 2.0f; // how long effects last
+
     
-    // singleton pattern for easy access
     public static ParticleEffectsManager Instance { get; private set; }
     
     // initialize the particle effects manager

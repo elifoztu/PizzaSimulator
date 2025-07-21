@@ -420,7 +420,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -500,6 +500,40 @@ MonoBehaviour:
   cookedColor: {r: 0.9, g: 0.7, b: 0.4, a: 1}
   cookingTime: 3
   cookingSound: {fileID: 0}
+  rawDoughColor: {r: 1, g: 1, b: 1, a: 1}
+  burntColor: {r: 0.4, g: 0.2, b: 0.1, a: 1}
+  perfectCookingTime: 2.5
+  burntTime: 5
+  cookingCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  pulseDuration: 0.5
+  pulseIntensity: 1.1
+  enableCookingShake: 1
+  shakeIntensity: 0.02
+  cookingCompleteSound: {fileID: 0}
+  burntSound: {fileID: 0}
 --- !u!58 &244551129
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -871,16 +905,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b5a12bfd513c4a2d88f559245642fd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  saucePlacementSound: {fileID: 0}
-  pepperoniPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
-  cornPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
-  olivesPlacementSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  masterMixerGroup: {fileID: 0}
+  sfxMixerGroup: {fileID: 0}
+  musicMixerGroup: {fileID: 0}
+  saucePlacementSounds: []
+  cheesePlacementSounds: []
+  pepperoniPlacementSounds: []
+  cornPlacementSounds: []
+  olivesPlacementSounds: []
   cookingStartSound: {fileID: 8300000, guid: 7bc84fed2974b487db359bf71b8e33a9, type: 3}
   cookingCompleteSound: {fileID: 8300000, guid: f3ce06659e7ef4ff192e2080f3610490, type: 3}
+  ovenOpenSound: {fileID: 0}
+  pizzaSlideSound: {fileID: 0}
   buttonClickSound: {fileID: 8300000, guid: 6f991f70e8ba44c9ea60ad43df95ba30, type: 3}
+  buttonHoverSound: {fileID: 0}
   newPizzaSound: {fileID: 8300000, guid: 92f2d5819ebe2411b8c81efb26ec83a3, type: 3}
+  errorSound: {fileID: 0}
+  customerArrivalSound: {fileID: 0}
+  customerHappySound: {fileID: 0}
+  customerAngrySound: {fileID: 0}
+  cashRegisterSound: {fileID: 0}
+  backgroundMusic: {fileID: 0}
+  playMusicOnStart: 1
   masterVolume: 1
+  sfxVolume: 1
+  musicVolume: 0.7
   soundEnabled: 1
+  maxSimultaneousSounds: 10
+  audioSourcePoolSize: 15
 --- !u!4 &296465180
 Transform:
   m_ObjectHideFlags: 0
@@ -1109,7 +1161,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -1423,6 +1475,13 @@ MonoBehaviour:
   buttonClickEffect: {fileID: 0}
   effectsEnabled: 1
   effectDuration: 2
+  maxActiveEffects: 20
+  effectLayer:
+    serializedVersion: 2
+    m_Bits: 2
+  useObjectPooling: 1
+  poolSize: 10
+  cleanupInterval: 5
 --- !u!4 &435030548
 Transform:
   m_ObjectHideFlags: 0
@@ -2041,7 +2100,7 @@ MonoBehaviour:
   ovenTransform: {fileID: 564036706}
   doughSprite: {fileID: 7716046400830436474, guid: dcafdbcacfe984c80ac888ca4cd269d5, type: 3}
   tomatoSauceSprite: {fileID: 6630341104690361922, guid: 92c15beed6c3e4050a514da263baebe2, type: 3}
-  cheeseSprite: {fileID: 6630341104690361922, guid: 92c15beed6c3e4050a514da263baebe2, type: 3}
+  cheeseSprite: {fileID: 21300000, guid: b0ad9833cb8f341d79a9c1d95de615fa, type: 3}
   pepperoniSprite: {fileID: 7496649716568761431, guid: bc22ce46e97d14d8c9905d350f6a8060, type: 3}
   cornSprite: {fileID: -6464869995595449900, guid: 8c2d3cb91dee24161b3a0bf920d78728, type: 3}
   olivesSprite: {fileID: -26916986612398448, guid: 7c26fec2d3b044f33abbbbb35ee1eee2, type: 3}
@@ -2054,14 +2113,17 @@ MonoBehaviour:
   cookPizzaButton: {fileID: 799419397}
   servePizzaButton: {fileID: 973800627}
   sauceBlobSize: 0.35
-  cheeseSize: 0.25
+  cheeseSize: 0.35
   pepperoniSize: 0.35
   cornSize: 0.1
   olivesSize: 0.15
   saucePaintDistance: 0.2
   sauceAlpha: 0.8
+  maxSauceBlobs: 100
   slideTime: 3
   slideDistance: 40
+  selectedButtonColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  normalButtonColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &854451195
 Transform:
   m_ObjectHideFlags: 0
@@ -2249,7 +2311,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 200, y: -150}
+  m_AnchoredPosition: {x: 280, y: -150}
   m_SizeDelta: {x: 80, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &973800627
@@ -2562,7 +2624,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3078,7 +3140,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3301,7 +3363,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3508,6 +3570,10 @@ MonoBehaviour:
   customerPatience: 45
   dailyGoalMoney: 50
   startingMoney: 0
+  happyTextColor: {r: 0, g: 1, b: 0, a: 1}
+  angryTextColor: {r: 1, g: 0, b: 0, a: 1}
+  normalTextColor: {r: 1, g: 1, b: 1, a: 1}
+  messageDisplayTime: 2
 --- !u!4 &1953920543
 Transform:
   m_ObjectHideFlags: 0
@@ -3613,7 +3679,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3885,7 +3951,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 0
   m_fontSizeMax: 0
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -4089,7 +4155,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535

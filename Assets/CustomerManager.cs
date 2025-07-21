@@ -19,9 +19,15 @@ public class CustomerManager : MonoBehaviour
     
     [Header("Game Settings")]
     [SerializeField] private float customerInterval = 20f; // seconds between new customers
-    [SerializeField] private float customerPatience = 45f; // how long customers wait
+    [SerializeField] private float customerPatience = 45f; 
     [SerializeField] private int dailyGoalMoney = 50; // money needed to complete the day
     [SerializeField] private int startingMoney = 0; // money player starts with
+    
+    [Header("Visual Feedback")]
+    [SerializeField] private Color happyTextColor = Color.green;
+    [SerializeField] private Color angryTextColor = Color.red; // color for angry customer messages
+    [SerializeField] private Color normalTextColor = Color.white; // normal text color
+    [SerializeField] private float messageDisplayTime = 2f; // how long to show customer reaction messages
     
     // singleton pattern for easy access
     public static CustomerManager Instance { get; private set; }
@@ -33,49 +39,71 @@ public class CustomerManager : MonoBehaviour
     private bool gameActive = true; // whether the game is running
     
     // current customer state
-    private SimpleCustomerOrder currentOrder; // what the current customer wants
+    private CustomerOrder currentOrder; // what the current customer wants
     private string currentCustomerName; // current customer's name
     private float currentPatience; // how much patience current customer has left
     private bool hasActiveCustomer = false; // whether there's currently a customer waiting
     
     // customer names for variety
-    private string[] customerNames = {
+    private readonly string[] customerNames = {
         "Alice", "Bob", "Charlie", "Diana", "Emma", "Frank", "Grace", "Henry",
-        "Ivy", "Jack", "Kate", "Leo", "Mia", "Noah", "Olivia", "Paul"
+        "Ivy", "Jack", "Kate", "Leo", "Mia", "Noah", "Olivia", "Paul",
+        "Quinn", "Rachel", "Sam", "Tina", "Victor", "Wendy", "Xavier", "Yara", "Zoe"
     };
     
-    // represents what pizza a customer wants (now with cheese!)
+    // events for better decoupling between systems
+    public System.Action<int> OnMoneyChanged;
+    public System.Action<int> OnOrderCompleted;
+    public System.Action OnDayCompleted;
+    
+    #region Customer Order System
+    
+    // represents what pizza a customer wants
     [System.Serializable]
-    public class SimpleCustomerOrder
+    public class CustomerOrder
     {
-        public bool wantsSauce; // does customer want tomato sauce
-        public bool wantsCheese; // does customer want cheese - NEW!
-        public bool wantsPepperoni; // does customer want pepperoni
-        public bool wantsCorn; // does customer want corn
-        public bool wantsOlives; // does customer want olives
-        public bool wantsCooked; // does customer want pizza cooked
+        // using proper flags enum with bitwise operations for cleaner code
+        [System.Flags]
+        public enum ToppingsFlags
+        {
+            None = 0,
+            Sauce = 1,
+            Cheese = 2,
+            Pepperoni = 4,
+            Corn = 8,
+            Olives = 16
+        }
+        
+        public ToppingsFlags requiredToppings; // what toppings the customer wants (using flags)
         public int tipAmount; // bonus money if order is perfect
+        public int basePayment = 10; // configurable base payment
+        
+        // properties for easy access to individual toppings
+        public bool WantsSauce => (requiredToppings & ToppingsFlags.Sauce) != 0;
+        public bool WantsCheese => (requiredToppings & ToppingsFlags.Cheese) != 0;
+        public bool WantsPepperoni => (requiredToppings & ToppingsFlags.Pepperoni) != 0;
+        public bool WantsCorn => (requiredToppings & ToppingsFlags.Corn) != 0;
+        public bool WantsOlives => (requiredToppings & ToppingsFlags.Olives) != 0;
+        public bool WantsCooked => true; // customers always want their pizza cooked
         
         // generates a random pizza order
-        public static SimpleCustomerOrder GenerateRandomOrder()
+        public static CustomerOrder GenerateRandomOrder()
         {
-            SimpleCustomerOrder order = new SimpleCustomerOrder();
+            var order = new CustomerOrder();
             
+            // using bitwise operations for cleaner flag setting
             // sauce is very common (90% chance)
-            order.wantsSauce = Random.Range(0f, 1f) < 0.9f;
+            if (Random.value < 0.9f) order.requiredToppings |= ToppingsFlags.Sauce;
             
-            // cheese is very common too (85% chance) - NEW!
-            order.wantsCheese = Random.Range(0f, 1f) < 0.85f;
+            // cheese is very common too (85% chance)
+            if (Random.value < 0.85f) order.requiredToppings |= ToppingsFlags.Cheese;
             
             // each topping has a 50% chance
-            order.wantsPepperoni = Random.Range(0f, 1f) < 0.5f;
-            order.wantsCorn = Random.Range(0f, 1f) < 0.5f;
-            order.wantsOlives = Random.Range(0f, 1f) < 0.5f;
+            if (Random.value < 0.5f) order.requiredToppings |= ToppingsFlags.Pepperoni;
+            if (Random.value < 0.5f) order.requiredToppings |= ToppingsFlags.Corn;
+            if (Random.value < 0.5f) order.requiredToppings |= ToppingsFlags.Olives;
             
-            // customers always want their pizza cooked
-            order.wantsCooked = true;
-            
-            // random tip amount (0-5 extra coins)
+            // random tip amount
             order.tipAmount = Random.Range(0, 6);
             
             return order;
@@ -84,53 +112,47 @@ public class CustomerManager : MonoBehaviour
         // converts order to readable text
         public string ToOrderString()
         {
-            List<string> ingredients = new List<string>();
+            var ingredients = new List<string>();
             
-            if (wantsSauce) ingredients.Add("sauce");
-            if (wantsCheese) ingredients.Add("cheese"); // NEW!
-            if (wantsPepperoni) ingredients.Add("pepperoni");
-            if (wantsCorn) ingredients.Add("corn");
-            if (wantsOlives) ingredients.Add("olives");
+            if (WantsSauce) ingredients.Add("sauce");
+            if (WantsCheese) ingredients.Add("cheese");
+            if (WantsPepperoni) ingredients.Add("pepperoni");
+            if (WantsCorn) ingredients.Add("corn");
+            if (WantsOlives) ingredients.Add("olives");
             
             if (ingredients.Count == 0)
-            {
                 return "I want just plain dough, cooked please!";
-            }
-            else if (ingredients.Count == 1)
-            {
+            
+            if (ingredients.Count == 1)
                 return $"I want {ingredients[0]} pizza, cooked!";
-            }
-            else
-            {
-                string ingredientList = string.Join(", ", ingredients.ToArray(), 0, ingredients.Count - 1);
-                return $"I want {ingredientList} and {ingredients[ingredients.Count - 1]} pizza, cooked!";
-            }
+            
+            string ingredientList = string.Join(", ", ingredients.ToArray(), 0, ingredients.Count - 1);
+            return $"I want {ingredientList} and {ingredients[ingredients.Count - 1]} pizza, cooked!";
+        }
+        
+        // calculate payment with time bonus for better game mechanics
+        public int CalculatePayment(float remainingPatience, float maxPatience)
+        {
+            int timeBonus = Mathf.RoundToInt(remainingPatience / maxPatience * 5f); // max 5 bonus for speed
+            return basePayment + tipAmount + timeBonus;
         }
     }
     
+    #endregion
+    
+    #region Unity Lifecycle
+    
     void Awake()
     {
-        // singleton setup
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
-        }
-        
+        InitializeSingleton();
         currentMoney = startingMoney;
-        UpdateUI();
     }
     
     void Start()
     {
-        // hide order UI initially
         HideOrderUI();
+        UpdateUI();
         
-        // start the customer cycle
         if (gameActive)
         {
             StartCoroutine(CustomerCycle());
@@ -141,22 +163,41 @@ public class CustomerManager : MonoBehaviour
     
     void Update()
     {
-        // update patience if we have an active customer
         if (hasActiveCustomer)
         {
             UpdateCustomerPatience();
         }
     }
     
+    #endregion
+    
+    #region Initialization
+    
+    // organized singleton initialization with proper error handling
+    private void InitializeSingleton()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Debug.LogWarning("Multiple CustomerManager instances detected. Destroying duplicate.");
+            Destroy(gameObject);
+        }
+    }
+    
+    #endregion
+    
+    #region Customer Lifecycle
+    
     // main customer cycle - spawns customers at intervals
     IEnumerator CustomerCycle()
     {
         while (gameActive)
         {
-            // wait for customer interval
             yield return new WaitForSeconds(customerInterval);
             
-            // only spawn new customer if no one is currently waiting
             if (!hasActiveCustomer)
             {
                 SpawnNewCustomer();
@@ -167,31 +208,31 @@ public class CustomerManager : MonoBehaviour
     // creates a new customer with random order, this one is important
     void SpawnNewCustomer()
     {
-        currentOrder = SimpleCustomerOrder.GenerateRandomOrder();
+        currentOrder = CustomerOrder.GenerateRandomOrder();
         currentCustomerName = customerNames[Random.Range(0, customerNames.Length)];
         currentPatience = customerPatience;
         hasActiveCustomer = true;
         
         ShowOrderUI();
+        PlayCustomerArrivalSound();
         
         Debug.Log($"{currentCustomerName} wants: {currentOrder.ToOrderString()}");
     }
     
+    private void PlayCustomerArrivalSound()
+    {
+        AudioManager.Instance?.PlayButtonClickSound(); // could be replaced with customer arrival sound
+    }
+    
+    #endregion
+    
+    #region UI Management
+    
     // shows the order UI at top of screen
     void ShowOrderUI()
     {
-        if (currentOrderText != null)
-        {
-            currentOrderText.text = currentOrder.ToOrderString();
-            currentOrderText.color = Color.white; // reset to normal color
-            currentOrderText.gameObject.SetActive(true);
-        }
-        
-        if (customerNameText != null)
-        {
-            customerNameText.text = currentCustomerName + " says:";
-            customerNameText.gameObject.SetActive(true);
-        }
+        SetUIElementActive(currentOrderText, currentOrder.ToOrderString(), normalTextColor);
+        SetUIElementActive(customerNameText, $"{currentCustomerName} says:", normalTextColor);
         
         if (patienceSlider != null)
         {
@@ -214,72 +255,76 @@ public class CustomerManager : MonoBehaviour
             patienceSlider.gameObject.SetActive(false);
     }
     
+    // helper method for text UI element management with color support
+    private void SetUIElementActive(TextMeshProUGUI textElement, string text, Color? color = null, bool active = true)
+    {
+        if (textElement != null)
+        {
+            textElement.text = text;
+            if (color.HasValue) textElement.color = color.Value;
+            textElement.gameObject.SetActive(active);
+        }
+    }
+    
+    // updates the UI with current game stats
+    void UpdateUI()
+    {
+        if (moneyText != null)
+            moneyText.text = $"Money: ${currentMoney}";
+        
+        if (ordersCompletedText != null)
+            ordersCompletedText.text = $"Orders: {ordersCompleted}";
+        
+        if (dailyGoalText != null)
+            dailyGoalText.text = $"Goal: ${currentMoney}/{dailyGoalMoney}";
+    }
+    
+    #endregion
+    
+    #region Patience System
+    
     // updates customer patience and patience bar
     void UpdateCustomerPatience()
     {
         currentPatience -= Time.deltaTime;
         
-        // update patience slider
         if (patienceSlider != null)
         {
             patienceSlider.value = currentPatience;
             
-            // change patience bar color based on remaining time
             if (patienceSliderFill != null)
             {
-                if (currentPatience > customerPatience * 0.6f)
-                    patienceSliderFill.color = Color.green; // calm
-                else if (currentPatience > customerPatience * 0.3f)
-                    patienceSliderFill.color = Color.yellow; // getting impatient
-                else
-                    patienceSliderFill.color = Color.red; // very impatient
+                patienceSliderFill.color = GetPatienceColor(currentPatience / customerPatience);
             }
         }
         
-        // customer leaves if patience runs out
         if (currentPatience <= 0f)
         {
-            CustomerLeavesAngryTimeout();
+            CustomerLeavesAngry("Ugh! This is taking forever! I'm leaving!", true);
         }
     }
     
-    // customer leaves angry (patience ran out)
-    void CustomerLeavesAngryTimeout()
+    // helper method to get patience color based on ratio
+    private Color GetPatienceColor(float patienceRatio)
     {
-        // show angry timeout message
-        if (currentOrderText != null)
-        {
-            currentOrderText.text = "Ugh! This is taking forever! I'm leaving!";
-            currentOrderText.color = Color.red;
-        }
-        
-        Debug.Log($"{currentCustomerName} left angry! too slow!");
-        
-        // lose money when customers leave angry
-        currentMoney -= 5;
-        if (currentMoney < 0) currentMoney = 0;
-        
-        ordersFailed++;
-        
-        UpdateUI();
-        
-        // play angry sound effect
-        AudioManager.Instance?.PlayButtonClickSound(); // placeholder
-        
-        // hide UI after showing message for a moment
-        StartCoroutine(HideOrderUIAfterDelay(2f));
+        if (patienceRatio > 0.6f) return Color.green; // calm
+        if (patienceRatio > 0.3f) return Color.yellow; // getting impatient
+        return Color.red; // very impatient
     }
+    
+    #endregion
+    
+    #region Order Processing
     
     // public function for pizza simulator to serve pizza to current customer
     public bool ServePizzaToCustomer(PizzaSimulator.IngredientType[] ingredients, bool isCooked)
     {
-        if (!hasActiveCustomer) 
+        if (!hasActiveCustomer)
         {
             Debug.Log("no customer is waiting!");
             return false;
         }
         
-        // check if the pizza matches what customer ordered
         bool orderCorrect = CheckOrderCorrectness(ingredients, isCooked);
         
         if (orderCorrect)
@@ -289,7 +334,7 @@ public class CustomerManager : MonoBehaviour
         }
         else
         {
-            CustomerLeavesAngryWrongOrder();
+            CustomerLeavesAngry("This isn't what I ordered! I'm not paying for this!", false);
             return false;
         }
     }
@@ -297,81 +342,59 @@ public class CustomerManager : MonoBehaviour
     // checks if the served pizza matches the customer's order
     bool CheckOrderCorrectness(PizzaSimulator.IngredientType[] ingredients, bool isCooked)
     {
-        // check if cooking state matches
-        if (isCooked != currentOrder.wantsCooked) return false;
+        if (isCooked != currentOrder.WantsCooked) return false;
         
-        // count what ingredients are on the pizza
-        bool hasSauce = System.Array.Exists(ingredients, ing => ing == PizzaSimulator.IngredientType.TomatoSauce);
-        bool hasCheese = System.Array.Exists(ingredients, ing => ing == PizzaSimulator.IngredientType.Cheese);
-        bool hasPepperoni = System.Array.Exists(ingredients, ing => ing == PizzaSimulator.IngredientType.Pepperoni);
-        bool hasCorn = System.Array.Exists(ingredients, ing => ing == PizzaSimulator.IngredientType.Corn);
-        bool hasOlives = System.Array.Exists(ingredients, ing => ing == PizzaSimulator.IngredientType.Olives);
+        // create efficient lookup for better performance
+        var ingredientSet = new System.Collections.Generic.HashSet<PizzaSimulator.IngredientType>(ingredients);
         
-        // check if ingredients match order exactly
-        return (hasSauce == currentOrder.wantsSauce &&
-                hasCheese == currentOrder.wantsCheese &&
-                hasPepperoni == currentOrder.wantsPepperoni &&
-                hasCorn == currentOrder.wantsCorn &&
-                hasOlives == currentOrder.wantsOlives);
+        // check if ingredients match order exactly using properties
+        return (ingredientSet.Contains(PizzaSimulator.IngredientType.TomatoSauce) == currentOrder.WantsSauce &&
+                ingredientSet.Contains(PizzaSimulator.IngredientType.Cheese) == currentOrder.WantsCheese &&
+                ingredientSet.Contains(PizzaSimulator.IngredientType.Pepperoni) == currentOrder.WantsPepperoni &&
+                ingredientSet.Contains(PizzaSimulator.IngredientType.Corn) == currentOrder.WantsCorn &&
+                ingredientSet.Contains(PizzaSimulator.IngredientType.Olives) == currentOrder.WantsOlives);
     }
+    
+    #endregion
+    
+    #region Customer Reactions
     
     // customer leaves happy when order is correct
     void CustomerLeavesHappy()
     {
-        // show happy message
-        if (currentOrderText != null)
-        {
-            currentOrderText.text = "Yum! Thank you so much! This is perfect!";
-            currentOrderText.color = Color.green;
-        }
+        SetUIElementActive(currentOrderText, "Yum! Thank you so much! This is perfect!", happyTextColor);
         
         Debug.Log($"{currentCustomerName} is happy! correct order!");
         
-        // calculate payment (base + tip + time bonus)
-        int basePayment = 10;
-        int timeBonus = Mathf.RoundToInt(currentPatience / 10f); // bonus for being fast
-        int payment = basePayment + currentOrder.tipAmount + timeBonus;
-        
-        currentMoney += payment;
+        // calculate payment using method with time bonus
+        int payment = currentOrder.CalculatePayment(currentPatience, customerPatience);
+        AddMoney(payment);
         ordersCompleted++;
         
+        OnOrderCompleted?.Invoke(ordersCompleted);
         UpdateUI();
         CheckDailyGoal();
         
-        Debug.Log($"earned ${payment}! (base: $10, tip: ${currentOrder.tipAmount}, time bonus: ${timeBonus})");
+        Debug.Log($"earned ${payment}! (includes time bonus for fast service)");
         
-        // play happy sound effect
         AudioManager.Instance?.PlayCookingCompleteSound();
-        
-        // hide UI after showing message for a moment
-        StartCoroutine(HideOrderUIAfterDelay(2f));
+        StartCoroutine(HideOrderUIAfterDelay(messageDisplayTime));
     }
     
-    // customer leaves angry when order is wrong
-    void CustomerLeavesAngryWrongOrder()
+    // unified method for customer leaving angry with different reasons
+    private void CustomerLeavesAngry(string message, bool isTimeout)
     {
-        // show angry message
-        if (currentOrderText != null)
-        {
-            currentOrderText.text = "This isn't what I ordered! I'm not paying for this!";
-            currentOrderText.color = Color.red;
-        }
+        SetUIElementActive(currentOrderText, message, angryTextColor);
         
-        Debug.Log($"{currentCustomerName} left angry! wrong order!");
+        Debug.Log($"{currentCustomerName} left angry! {(isTimeout ? "Too slow!" : "Wrong order!")}");
         
-        // lose money when customers leave angry
-        currentMoney -= 5;
-        if (currentMoney < 0) currentMoney = 0;
-        
+        AddMoney(-5);
         ordersFailed++;
         
         UpdateUI();
         
-        // play angry sound effect
-        AudioManager.Instance?.PlayButtonClickSound(); // placeholder
-        
-        // hide UI after showing message for a moment
-        StartCoroutine(HideOrderUIAfterDelay(2f));
+        AudioManager.Instance?.PlayButtonClickSound(); // placeholder for angry customer sound
+        StartCoroutine(HideOrderUIAfterDelay(messageDisplayTime));
     }
     
     // hides order UI after a delay and sets up for next customer
@@ -380,32 +403,22 @@ public class CustomerManager : MonoBehaviour
         yield return new WaitForSeconds(delay);
         hasActiveCustomer = false;
         HideOrderUI();
-        
-        // reset text color for next customer
-        if (currentOrderText != null)
-        {
-            currentOrderText.color = Color.white; // or whatever your normal text color is
-        }
     }
     
-    // updates the UI with current game stats
-    void UpdateUI()
+    #endregion
+    
+    #region Money Management
+    
+    // organized money handling with events
+    private void AddMoney(int amount)
     {
-        if (moneyText != null)
-        {
-            moneyText.text = $"Money: ${currentMoney}";
-        }
-        
-        if (ordersCompletedText != null)
-        {
-            ordersCompletedText.text = $"Orders: {ordersCompleted}";
-        }
-        
-        if (dailyGoalText != null)
-        {
-            dailyGoalText.text = $"Goal: ${currentMoney}/{dailyGoalMoney}";
-        }
+        currentMoney = Mathf.Max(0, currentMoney + amount);
+        OnMoneyChanged?.Invoke(currentMoney);
     }
+    
+    #endregion
+    
+    #region Game Progression
     
     // checks if player has reached the daily goal
     void CheckDailyGoal()
@@ -420,34 +433,25 @@ public class CustomerManager : MonoBehaviour
     void CompleteDay()
     {
         gameActive = false;
+        OnDayCompleted?.Invoke();
         Debug.Log($"congratulations! you reached the daily goal of ${dailyGoalMoney}!");
         
         // could show victory screen here
     }
     
-     // public getters for game stats
-	public int GetMoney() 
-	{ 
-    	return currentMoney; 
-	}
-
-	public int GetOrdersCompleted() 
-	{ 
-    	return ordersCompleted; 
-	}
-
-	public int GetOrdersFailed() 
-	{	 
-    	return ordersFailed; 
-	}
-
-	public bool IsGameActive() 
-	{ 
-    	return gameActive; 
-	}
-
-	public bool HasActiveCustomer() 
-	{ 
-    	return hasActiveCustomer; 
-	}
+    #endregion
+    
+    #region Public API
+    
+    // public getters for game stats
+    public int GetMoney() => currentMoney;
+    public int GetOrdersCompleted() => ordersCompleted;
+    public int GetOrdersFailed() => ordersFailed;
+    public bool IsGameActive() => gameActive;
+    public bool HasActiveCustomer() => hasActiveCustomer;
+    public CustomerOrder GetCurrentOrder() => currentOrder;
+    public string GetCurrentCustomerName() => currentCustomerName;
+    public float GetCurrentPatience() => currentPatience;
+    
+    #endregion
 }
